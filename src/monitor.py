@@ -160,8 +160,9 @@ class AFLMonitor:
             summary.max_cycle = max(cycles)
             summary.avg_cycle = sum(cycles) / len(cycles)
 
-        # Cycles without finds
-        cwof_values = [str(s.cycles_wo_finds) for s in all_stats if s.cycles_wo_finds >= 0]
+        # Cycles without finds - sort by fuzzer name for consistent display
+        sorted_stats = sorted(all_stats, key=lambda s: s.fuzzer_name)
+        cwof_values = [str(s.cycles_wo_finds) for s in sorted_stats if s.cycles_wo_finds >= 0]
         summary.cycles_wo_finds = "/".join(cwof_values) if cwof_values else "N/A"
 
         # Advanced stats
