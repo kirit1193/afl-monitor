@@ -1301,11 +1301,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             document.getElementById('ramText').textContent =
                 `${system.memory_used_gb.toFixed(1)}/${system.memory_total_gb.toFixed(1)} GB`;
 
-            const diskPercent = Math.min(system.disk_percent || 0, 100);
-            document.getElementById('diskBar').style.width = diskPercent + '%';
-            document.getElementById('diskText').textContent =
-                `${(system.disk_used_gb || 0).toFixed(0)}/${(system.disk_total_gb || 0).toFixed(0)} GB`;
-
             // Store fuzzers data and render table with sorting
             fuzzersData = data.fuzzers;
             renderFuzzersTable();
