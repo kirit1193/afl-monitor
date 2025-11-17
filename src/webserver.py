@@ -19,6 +19,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AFL Overseer Dashboard</title>
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="AFL Overseer Dashboard">
+    <meta property="og:description" content="Real-time fuzzing monitoring" id="og-description">
+    <meta property="og:image" content="https://raw.githubusercontent.com/kirit1193/afl-overseer/main/assets/logo.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="AFL Overseer Dashboard">
+    <meta property="twitter:description" content="Real-time fuzzing monitoring" id="twitter-description">
+    <meta property="twitter:image" content="https://raw.githubusercontent.com/kirit1193/afl-overseer/main/assets/logo.png">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
@@ -69,7 +82,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .header {
             background: var(--bg-secondary);
             border-bottom: 2px solid var(--accent);
-            padding: 10px 20px 12px 20px;
+            padding: 6px 20px;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -80,14 +93,37 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            gap: 20px;
         }
 
         .header h1 {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--accent);
             margin: 0;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .header-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-stat-label {
+            font-weight: 500;
+        }
+
+        .header-stat-value {
+            color: var(--text-primary);
+            font-weight: 600;
         }
 
         .header-info {
@@ -136,16 +172,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             text-align: right;
         }
 
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            background: var(--bg-tertiary);
-            font-weight: 500;
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            cursor: help;
+            transition: all 0.3s;
         }
 
-        .status-badge.live {
+        .status-dot.live {
             background: var(--success);
-            color: #000;
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .status-dot.warning {
+            background: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+        }
+
+        .status-dot.error {
+            background: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
         }
 
         .theme-toggle {
@@ -334,13 +382,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             height: 250px;
         }
 
+        .table-wrapper {
+            overflow-x: auto;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             background: var(--bg-secondary);
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid var(--border);
         }
 
         th {
@@ -353,6 +406,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             color: var(--text-secondary);
             font-weight: 600;
             border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+
+        th:hover {
+            background: var(--bg-primary);
+            color: var(--accent);
+        }
+
+        th.sortable::after {
+            content: ' ↕';
+            opacity: 0.3;
+        }
+
+        th.sorted-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        th.sorted-desc::after {
+            content: ' ↓';
+            opacity: 1;
         }
 
         td {
@@ -496,37 +575,39 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
     <div class="header">
         <div class="header-top">
-            <h1>AFL Overseer Dashboard</h1>
+            <h1>AFL Overseer</h1>
+            <div class="header-stats">
+                <div class="header-stat">
+                    <span class="header-stat-label">Coverage:</span>
+                    <span class="header-stat-value" id="headerCoverage">0%</span>
+                </div>
+                <div class="header-stat">
+                    <span class="header-stat-label">Crashes:</span>
+                    <span class="header-stat-value" id="headerCrashes">0</span>
+                </div>
+                <div class="sys-metric">
+                    <span class="sys-metric-label">CPU:</span>
+                    <div class="sys-metric-bar"><div class="sys-metric-fill" id="cpuBar" style="width: 0%"></div></div>
+                    <span class="sys-metric-value" id="cpuText">0%</span>
+                </div>
+                <div class="sys-metric">
+                    <span class="sys-metric-label">RAM:</span>
+                    <div class="sys-metric-bar"><div class="sys-metric-fill" id="ramBar" style="width: 0%"></div></div>
+                    <span class="sys-metric-value" id="ramText">0/0 GB</span>
+                </div>
+            </div>
             <div class="header-info">
-                <select id="refreshSelect" onchange="changeRefreshInterval()" style="background: var(--bg-tertiary); border: none; color: var(--text-primary); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                <select id="refreshSelect" onchange="changeRefreshInterval()" style="background: var(--bg-tertiary); border: none; color: var(--text-primary); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">
                     <option value="1">1s</option>
                     <option value="2">2s</option>
                     <option value="5">5s</option>
                     <option value="10">10s</option>
                     <option value="30">30s</option>
                 </select>
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" style="padding: 4px 10px; font-size: 12px;">
                     <span id="themeIcon">☀</span>
                 </button>
-                <div class="status-badge live">● LIVE</div>
-                <div id="lastUpdate" style="font-size: 11px;">Last update: --:--:--</div>
-            </div>
-        </div>
-        <div class="system-metrics">
-            <div class="sys-metric">
-                <span class="sys-metric-label">CPU:</span>
-                <div class="sys-metric-bar"><div class="sys-metric-fill" id="cpuBar" style="width: 0%"></div></div>
-                <span class="sys-metric-value" id="cpuText">0%</span>
-            </div>
-            <div class="sys-metric">
-                <span class="sys-metric-label">RAM:</span>
-                <div class="sys-metric-bar"><div class="sys-metric-fill" id="ramBar" style="width: 0%"></div></div>
-                <span class="sys-metric-value" id="ramText">0/0 GB</span>
-            </div>
-            <div class="sys-metric">
-                <span class="sys-metric-label">Disk:</span>
-                <div class="sys-metric-bar"><div class="sys-metric-fill" id="diskBar" style="width: 0%"></div></div>
-                <span class="sys-metric-value" id="diskText">0/0 GB</span>
+                <span class="status-dot live" id="statusDot" title="Live - Click for details"></span>
             </div>
         </div>
     </div>
@@ -605,6 +686,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <div class="metric-subvalue" style="opacity: 0.6;">ago</div>
                 </div>
 
+                <!-- Last Crash -->
+                <div class="metric-card">
+                    <div class="metric-label">Last Crash</div>
+                    <div class="metric-value" id="lastCrash" style="font-size: 16px;">never</div>
+                    <div class="metric-subvalue" style="opacity: 0.6;">ago</div>
+                </div>
+
                 <!-- Cycles -->
                 <div class="metric-card">
                     <div class="metric-label">Cycles</div>
@@ -622,24 +710,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </div>
 
         <div id="fuzzers" class="tab-content">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Status</th>
-                        <th>Runtime</th>
-                        <th>Execs</th>
-                        <th>Speed</th>
-                        <th>Coverage</th>
-                        <th>Crashes</th>
-                        <th>Corpus</th>
-                        <th>Stability</th>
-                    </tr>
-                </thead>
-                <tbody id="fuzzersTable">
-                    <tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading...</td></tr>
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="name">Name</th>
+                            <th class="sortable" data-sort="status">Status</th>
+                            <th class="sortable" data-sort="runtime">Runtime</th>
+                            <th class="sortable" data-sort="execs">Execs</th>
+                            <th class="sortable" data-sort="speed">Speed</th>
+                            <th class="sortable" data-sort="coverage">Coverage</th>
+                            <th class="sortable" data-sort="crashes">Crashes</th>
+                            <th class="sortable" data-sort="corpus">Corpus</th>
+                            <th class="sortable" data-sort="stability">Stability</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fuzzersTable">
+                        <tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div id="graphs" class="tab-content">
@@ -695,6 +785,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         // Refresh interval management
         let refreshIntervalId = null;
+
+        // Table sorting state
+        let sortColumn = 'name';
+        let sortDirection = 'asc';
+        let fuzzersData = [];
 
         function changeTimePeriod() {
             const select = document.getElementById('timePeriodSelect');
@@ -799,6 +894,91 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         loadTheme();
+
+        // Table sorting functionality
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            renderFuzzersTable();
+        }
+
+        function getSortValue(fuzzer, column) {
+            switch(column) {
+                case 'name': return fuzzer.name.toLowerCase();
+                case 'status': return fuzzer.status;
+                case 'runtime': return fuzzer.run_time;
+                case 'execs': return fuzzer.execs_done;
+                case 'speed': return fuzzer.exec_speed;
+                case 'coverage': return fuzzer.bitmap_cvg;
+                case 'crashes': return fuzzer.saved_crashes;
+                case 'corpus': return fuzzer.corpus_count;
+                case 'stability': return fuzzer.stability || 0;
+                default: return 0;
+            }
+        }
+
+        function renderFuzzersTable() {
+            const tbody = document.getElementById('fuzzersTable');
+
+            // Sort data
+            const sorted = [...fuzzersData].sort((a, b) => {
+                const aVal = getSortValue(a, sortColumn);
+                const bVal = getSortValue(b, sortColumn);
+
+                if (typeof aVal === 'string') {
+                    return sortDirection === 'asc'
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                } else {
+                    return sortDirection === 'asc'
+                        ? aVal - bVal
+                        : bVal - aVal;
+                }
+            });
+
+            // Update table headers
+            document.querySelectorAll('th.sortable').forEach(th => {
+                const col = th.getAttribute('data-sort');
+                th.className = 'sortable';
+                if (col === sortColumn) {
+                    th.className += sortDirection === 'asc' ? ' sorted-asc' : ' sorted-desc';
+                }
+            });
+
+            // Render rows
+            tbody.innerHTML = sorted.map(f => {
+                const rowClass = f.status === 'DEAD' ? 'dead' : (f.stability < 80 ? 'warning' : '');
+                const warnings = [];
+                if (f.stability < 80) warnings.push(`!${f.stability.toFixed(1)}%`);
+                if (f.slowest_exec_ms > 100) warnings.push(`slow:${f.slowest_exec_ms}ms`);
+
+                return `
+                <tr class="${rowClass}">
+                    <td>${f.name}${warnings.length > 0 ? `<span class="warning-badge">${warnings.join(' ')}</span>` : ''}</td>
+                    <td><span class="status ${f.status.toLowerCase()}">${f.status}</span></td>
+                    <td>${formatTime(f.run_time)}</td>
+                    <td>${formatNumber(f.execs_done)}</td>
+                    <td>${f.exec_speed.toFixed(0)}/s</td>
+                    <td>${f.bitmap_cvg.toFixed(1)}%</td>
+                    <td>${f.saved_crashes}</td>
+                    <td>${f.corpus_count}</td>
+                    <td>${f.stability ? f.stability.toFixed(1) + '%' : 'N/A'}</td>
+                </tr>
+            `}).join('');
+        }
+
+        // Add click handlers to table headers
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    sortTable(th.getAttribute('data-sort'));
+                });
+            });
+        });
 
         // Initialize charts
         const chartConfig = {
@@ -1025,8 +1205,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             // Update alerts
             updateAlerts(data);
 
-            // Fuzzer status with warnings
+            // Update header stats
+            document.getElementById('headerCoverage').textContent = summary.max_coverage.toFixed(1) + '%';
+            document.getElementById('headerCrashes').textContent = summary.total_crashes;
+
+            // Update meta tags for link previews
+            const metaDesc = `Coverage: ${summary.max_coverage.toFixed(1)}% | Crashes: ${summary.total_crashes} | Speed: ${formatNumber(summary.total_speed)}/s`;
+            document.getElementById('og-description').setAttribute('content', metaDesc);
+            document.getElementById('twitter-description').setAttribute('content', metaDesc);
+
+            // Update status dot based on system state
+            const statusDot = document.getElementById('statusDot');
             const deadCount = summary.dead_fuzzers || 0;
+            const aliveCount = summary.alive_fuzzers;
+
+            if (deadCount > 0) {
+                statusDot.className = 'status-dot error';
+                statusDot.title = `${deadCount} fuzzer(s) dead | Speed: ${formatNumber(summary.total_speed)}/s | ${aliveCount} alive`;
+            } else if (aliveCount === 0) {
+                statusDot.className = 'status-dot warning';
+                statusDot.title = `No active fuzzers | Speed: ${formatNumber(summary.total_speed)}/s`;
+            } else {
+                statusDot.className = 'status-dot live';
+                statusDot.title = `All systems operational | Speed: ${formatNumber(summary.total_speed)}/s | ${aliveCount} fuzzer(s) running`;
+            }
+
+            // Fuzzer status with warnings
             const startingCount = summary.starting_fuzzers || 0;
             const aliveFuzzersCard = document.getElementById('aliveFuzzersCard');
 
@@ -1076,6 +1280,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const lastFindText = formatTimeAgo(summary.last_find_time);
             document.getElementById('lastFind').textContent = lastFindText === 'never' ? 'never' : lastFindText;
 
+            // Last crash
+            const lastCrashText = formatTimeAgo(summary.last_crash_time);
+            document.getElementById('lastCrash').textContent = lastCrashText === 'never' ? 'never' : lastCrashText;
+
             // Cycles
             document.getElementById('avgCycle').textContent = summary.avg_cycle.toFixed(1);
             document.getElementById('maxCycle').textContent = summary.max_cycle;
@@ -1100,27 +1308,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             document.getElementById('diskText').textContent =
                 `${(system.disk_used_gb || 0).toFixed(0)}/${(system.disk_total_gb || 0).toFixed(0)} GB`;
 
-            // Fuzzers table
-            const tbody = document.getElementById('fuzzersTable');
-            tbody.innerHTML = data.fuzzers.map(f => {
-                const rowClass = f.status === 'DEAD' ? 'dead' : (f.stability < 80 ? 'warning' : '');
-                const warnings = [];
-                if (f.stability < 80) warnings.push(`!${f.stability.toFixed(1)}%`);
-                if (f.slowest_exec_ms > 100) warnings.push(`slow:${f.slowest_exec_ms}ms`);
-
-                return `
-                <tr class="${rowClass}">
-                    <td>${f.name}${warnings.length > 0 ? `<span class="warning-badge">${warnings.join(' ')}</span>` : ''}</td>
-                    <td><span class="status ${f.status.toLowerCase()}">${f.status}</span></td>
-                    <td>${formatTime(f.run_time)}</td>
-                    <td>${formatNumber(f.execs_done)}</td>
-                    <td>${f.exec_speed.toFixed(0)}/s</td>
-                    <td>${f.bitmap_cvg.toFixed(1)}%</td>
-                    <td>${f.saved_crashes}</td>
-                    <td>${f.corpus_count}</td>
-                    <td>${f.stability ? f.stability.toFixed(1) + '%' : 'N/A'}</td>
-                </tr>
-            `}).join('');
+            // Store fuzzers data and render table with sorting
+            fuzzersData = data.fuzzers;
+            renderFuzzersTable();
 
             // Update charts with timestamp tracking
             const timestamp = new Date().toLocaleTimeString();
@@ -1144,9 +1334,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             // Apply time period filter and update charts
             updateChartsWithFilter();
-
-            // Update last update time
-            document.getElementById('lastUpdate').textContent = 'Last update: ' + timestamp;
         }
 
         async function fetchData() {
