@@ -598,12 +598,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
             <div class="header-info">
                 <select id="refreshSelect" onchange="changeRefreshInterval()" style="background: var(--bg-tertiary); border: none; color: var(--text-primary); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                    <option value="0.1" style="color: #ff5555;">0.1s</option>
+                    <option value="0.5" style="color: #ff5555;">0.5s</option>
                     <option value="1">1s</option>
                     <option value="2">2s</option>
                     <option value="5">5s</option>
                     <option value="10">10s</option>
                     <option value="30">30s</option>
                 </select>
+                <span id="lastUpdate" style="font-size: 10px; color: var(--text-secondary);" title="Last update time"></span>
                 <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" style="padding: 4px 10px; font-size: 12px;">
                     <span id="themeIcon">☀</span>
                 </button>
@@ -844,7 +847,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         function changeRefreshInterval() {
             const select = document.getElementById('refreshSelect');
-            refreshInterval = parseInt(select.value);
+            refreshInterval = parseFloat(select.value);
             localStorage.setItem('refreshInterval', refreshInterval);
 
             // Clear and restart interval
@@ -852,6 +855,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 clearInterval(refreshIntervalId);
             }
             refreshIntervalId = setInterval(fetchData, refreshInterval * 1000);
+
+            // Immediate refresh
+            fetchData();
         }
 
         // Theme management
@@ -1327,6 +1333,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             // Apply time period filter and update charts
             updateChartsWithFilter();
+
+            // Update last refresh timestamp
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('lastUpdate').textContent = timeStr;
         }
 
         async function fetchData() {
@@ -1353,7 +1364,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         // Load saved preferences
         const savedInterval = localStorage.getItem('refreshInterval');
         if (savedInterval) {
-            refreshInterval = parseInt(savedInterval);
+            refreshInterval = parseFloat(savedInterval);
             document.getElementById('refreshSelect').value = refreshInterval;
         } else {
             // Set default from server
