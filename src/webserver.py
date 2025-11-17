@@ -971,12 +971,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             `}).join('');
         }
 
-        // Add click handlers to table headers
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('th.sortable').forEach(th => {
-                th.addEventListener('click', () => {
-                    sortTable(th.getAttribute('data-sort'));
-                });
+        // Add click handlers to table headers (run immediately since script is at end of body)
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                sortTable(th.getAttribute('data-sort'));
             });
         });
 
@@ -1339,10 +1337,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         async function fetchData() {
             try {
                 const response = await fetch('/api/stats');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 updateDashboard(data);
             } catch (error) {
                 console.error('Error fetching data:', error);
+                // Show error in fuzzers table if it's empty
+                const tbody = document.getElementById('fuzzersTable');
+                if (tbody && tbody.innerHTML.includes('Loading...')) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--danger);">
+                        Error loading data: ${error.message}<br>
+                        <span style="font-size: 12px; opacity: 0.7;">Check console for details</span>
+                    </td></tr>`;
+                }
             }
         }
 
