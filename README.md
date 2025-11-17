@@ -24,6 +24,57 @@ You can use it in three ways:
 
 Originally based on [afl-monitor](https://github.com/reflare/afl-monitor) by Paul S. Ziegler, but rewritten for Python 3.8+ with support for AFL++ 4.x features and a bunch of new stuff.
 
+## Screenshots
+
+### Terminal UI (TUI)
+
+The default interactive terminal interface provides:
+- **Summary panel**: Campaign-wide stats (alive/dead fuzzers, speed, coverage, crashes)
+- **Sortable fuzzer table**: Per-fuzzer details with color-coded status indicators
+- **System metrics**: CPU, RAM usage
+- **Multiple detail levels**: Press `1`/`2`/`3` to toggle between compact/normal/detailed views
+- **Campaign trends**: Execution speed sparklines (detailed view)
+
+Status indicators:
+- 🟢 Green dot = Alive fuzzer
+- 🔴 Red dot = Dead fuzzer
+- 🟡 Yellow dot = Starting fuzzer
+
+### Web Dashboard
+
+**Overview Tab:**
+- Campaign summary with metric cards (fuzzers, runtime, speed, coverage, crashes, corpus)
+- Coverage progress bar and stability metrics
+- Last find/crash timestamps
+- Real-time system resource monitoring (CPU, RAM)
+- Compact header with coverage% and crash count
+- Status indicator dot (green=healthy, yellow=warning, red=error)
+- Adjustable refresh rate (0.1s - 30s)
+
+**Fuzzers Tab:**
+- Sortable table of all fuzzer instances (click column headers to sort)
+- Status, runtime, executions, speed, coverage per fuzzer
+- Warning badges for low stability or high timeouts
+- Color-coded rows for dead/problematic fuzzers
+- Scrollable table with sticky headers
+
+**Graphs Tab:**
+- Execution speed over time
+- Coverage progression
+- Paths & crashes accumulation
+- Pending paths tracking
+- Time period selection (last 1min - session history)
+- Interactive charts with hover details
+
+**Features:**
+- Dark/light theme toggle
+- Live update indicator with timestamp
+- Minimalist, space-efficient design
+- Mobile-responsive layout
+- REST API at `/api/stats` for custom integrations
+
+> **Note:** To generate screenshots for documentation, run `python scripts/capture_screenshots.py` on a machine with display support (requires playwright).
+
 ## Installation
 
 **From PyPI:**
