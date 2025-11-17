@@ -1,6 +1,6 @@
 # AFL Overseer
 
-Monitoring and visualization tool for AFL/AFL++ fuzzing campaigns.
+A monitoring tool for AFL/AFL++ fuzzing campaigns. Points it at your sync directory and it shows you what's happening with your fuzzers.
 
 [![PyPI version](https://img.shields.io/pypi/v/afl-overseer.svg)](https://pypi.org/project/afl-overseer/)
 [![Python](https://img.shields.io/pypi/pyversions/afl-overseer.svg)](https://pypi.org/project/afl-overseer/)
@@ -8,225 +8,130 @@ Monitoring and visualization tool for AFL/AFL++ fuzzing campaigns.
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
-## Overview
+## What it does
 
-AFL Overseer monitors AFL and AFL++ fuzzing campaigns, providing real-time statistics and performance metrics. It combines features from the original afl-monitor and AFLplusplus/afl-whatsup with additional capabilities.
+Reads AFL fuzzer_stats files and shows you:
+- Which fuzzers are alive/dead/starting
+- Execution speed and coverage
+- Crashes and hangs
+- CPU and memory usage per fuzzer
+- Warning when things look wrong (dead fuzzers, low stability, slow execution)
 
-### Features
+You can use it in three ways:
+- Terminal UI with live updates (default)
+- Web dashboard with graphs
+- One-shot output for scripts
 
-- **Interactive TUI** - Terminal interface with live updates, sortable columns, and multiple detail levels
-- **Web Dashboard** - Browser-based UI with real-time graphs and REST API
-- **Process Detection** - Identifies alive, dead, and starting fuzzer instances
-- **Resource Monitoring** - CPU and memory usage per fuzzer
-- **Performance Warnings** - Detects dead fuzzers, low stability, high timeouts, and stalled campaigns
-- **Crash Notifications** - Execute custom commands when new crashes are found
-- **Comprehensive Stats** - Parses all fuzzer_stats fields including AFL++ 4.x extensions
-
-### Tracked Metrics
-
-Standard AFL metrics plus AFL++ extensions:
-- `testcache_size`, `testcache_count`, `testcache_evict`
-- `cpu_affinity`, `peak_rss_mb`
-- `edges_found`, `total_edges`
-- `var_byte_count`, `havoc_expansion`, `auto_dict_entries`
-- `afl_version`, `target_mode`
-- `slowest_exec_ms`, `execs_since_crash`
-- Per-fuzzer CPU and memory usage
-- Time without finds and comprehensive timing metrics
+Originally based on [afl-monitor](https://github.com/reflare/afl-monitor) by Paul S. Ziegler, but rewritten for Python 3.8+ with support for AFL++ 4.x features and a bunch of new stuff.
 
 ## Installation
 
-### Requirements
-
-- Python 3.8+
-- Linux, macOS, or WSL2
-
-### From PyPI (Recommended)
-
+**From PyPI:**
 ```bash
-# Install from PyPI
 pip install afl-overseer
-
-# Run directly
 afl-overseer /path/to/sync_dir
 ```
 
-### From Source
-
-#### Using a Virtual Environment
-
+**From source:**
 ```bash
 git clone https://github.com/kirit1193/afl-overseer.git
 cd afl-overseer
-
 python3 -m venv venv
 source venv/bin/activate
-
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 chmod +x afl-overseer
-
 ./afl-overseer /path/to/sync_dir
 ```
 
-### User Installation
-
-```bash
-git clone https://github.com/kirit1193/afl-overseer.git
-cd afl-overseer
-
-pip3 install --user -r requirements.txt
-chmod +x afl-overseer
-
-# Optional: Install globally
-sudo ln -s $(pwd)/afl-overseer /usr/local/bin/
-```
-
-### Dependencies
-
-```
-click>=8.1.0      # CLI framework
-rich>=13.0.0      # Terminal output
-psutil>=5.9.0     # Process monitoring
-textual>=0.40.0   # Interactive TUI
-aiohttp>=3.8.0    # Web server
-```
+Needs Python 3.8+ and works on Linux, macOS, or WSL2.
 
 ## Usage
 
-### Interactive TUI
-
+**TUI (default):**
 ```bash
-# Launch TUI (default mode)
 afl-overseer /path/to/sync_dir
 
-# Keyboard controls:
-#   q - Quit
-#   r - Refresh now
-#   1/2/3 - Compact/Normal/Detailed view
-#   n/s/c/e/r - Sort by Name/Speed/Coverage/Execs/Crashes
-#   d - Toggle dead fuzzers
-#   p - Pause/Resume auto-refresh
+# Keys:
+#   q - quit
+#   1/2/3 - compact/normal/detailed view
+#   d - toggle showing dead fuzzers
 ```
 
-### Web Dashboard
-
+**Web dashboard:**
 ```bash
-# Start web server with TUI
+# With TUI
 afl-overseer -w /path/to/sync_dir
 
-# Headless mode (no TUI)
+# Just web server (no TUI)
 afl-overseer -w --headless /path/to/sync_dir
 
 # Custom port
 afl-overseer -w -p 3000 /path/to/sync_dir
 
-# Access at http://localhost:8080
+# Then open http://localhost:8080
 ```
 
-### Static Output
+The web UI has:
+- Real-time graphs (speed, coverage, crashes over time)
+- Sortable fuzzer table (click column headers)
+- System resource monitoring
+- Dark/light theme
+- REST API at `/api/stats`
 
+**Static output:**
 ```bash
-# One-time output
+# One-time check
 afl-overseer -s /path/to/sync_dir
 
-# Detailed per-fuzzer stats
+# Detailed stats
 afl-overseer -s -v /path/to/sync_dir
 
-# Execute command on new crash
-afl-overseer -s -e './send_alert.sh' /path/to/sync_dir
+# Run command when new crashes found
+afl-overseer -s -e './alert.sh' /path/to/sync_dir
 ```
 
-## Command-Line Options
-
-| Option | Description |
-|--------|-------------|
-| `-t`, `--tui` | Interactive TUI mode (default) |
-| `-s`, `--static` | Static terminal output |
-| `-w`, `--web` | Start web server |
-| `-p`, `--port PORT` | Web server port (default: 8080) |
-| `--headless` | Run web server without TUI |
-| `-v`, `--verbose` | Show detailed per-fuzzer statistics |
-| `-n`, `--no-color` | Disable colored output |
-| `-i`, `--interval SEC` | Refresh interval in seconds (default: 5) |
-| `-d`, `--show-dead` | Include dead fuzzers in output |
-| `-m`, `--minimal` | Minimal output mode |
-| `-e`, `--execute CMD` | Execute command on new crash |
-| `--version` | Show version |
-| `--help` | Show help message |
-
-## Architecture
+## Command options
 
 ```
-afl-overseer/
-├── afl-overseer            # Main executable
-├── src/
-│   ├── cli.py              # Command-line interface
-│   ├── tui.py              # Interactive TUI
-│   ├── webserver.py        # Web server and dashboard
-│   ├── models.py           # Data models
-│   ├── parser.py           # Stats and plot data parsers
-│   ├── process.py          # Process detection and monitoring
-│   ├── monitor.py          # Core monitoring logic
-│   ├── utils.py            # Utility functions
-│   └── output_terminal.py  # Terminal output formatter
-├── requirements.txt        # Python dependencies
-└── testing/                # Test utilities and benchmarks
+-t, --tui          TUI mode (default)
+-s, --static       Static output (no updates)
+-w, --web          Start web server
+-p, --port PORT    Web server port (default: 8080)
+--headless         Web server without TUI
+-v, --verbose      Show per-fuzzer stats
+-i, --interval N   Refresh interval in seconds (default: 5)
+-d, --show-dead    Include dead fuzzers
+-e, --execute CMD  Run command on new crashes
+--help             Show help
+--version          Show version
 ```
 
-### Process Detection
+## Metrics tracked
 
-Fuzzer status is determined by:
+All the standard AFL stuff:
+- Execution speed, total execs, runtime
+- Coverage (edge coverage %)
+- Crashes, hangs, corpus size
+- Cycles done, stability, timeouts
 
-- **Alive**: Process exists and responds to signals
-- **Dead**: Process PID not found or no recent activity
-- **Starting**: `fuzzer_setup` newer than `fuzzer_stats` with recent modification
+Plus AFL++ 4.x additions:
+- Test cache stats (size, count, evictions)
+- CPU affinity, peak RSS
+- Edges found vs total edges
+- Slowest execution time
+- Execs since last crash
+- And a bunch more (50+ fields total)
 
-### Performance Warnings
+Also tracks per-fuzzer CPU and memory usage via psutil.
 
-Automatic detection of:
-- Dead fuzzer instances
-- High timeout ratio (≥10%)
-- Slow execution (<100 execs/sec)
-- Cycles without finds (>10 cycles warning, >50 cycles critical)
-- Low stability (<80%)
-- High slowest execution time (>100ms)
+## Crash notifications
 
-## Web Dashboard
-
-The web interface provides:
-- Real-time graphs for speed, coverage, and paths/crashes
-- Live fuzzer status table with warnings
-- System resource monitoring
-- Light/Dark theme toggle
-- Mobile-responsive design
-- REST API endpoint at `/api/stats`
-
-Example API response:
-```json
-{
-  "summary": {
-    "alive_fuzzers": 3,
-    "total_fuzzers": 3,
-    "total_execs": 1000000,
-    "current_speed": 500.0,
-    "max_coverage": 45.2,
-    "total_crashes": 5,
-    "corpus_count": 250
-  },
-  "fuzzers": [...],
-  "system": {...}
-}
-```
-
-## Crash Notifications
-
-Execute custom commands when new crashes are detected:
-
+Run a script when new crashes are detected:
 ```bash
 afl-overseer -s -e './notify.sh' /path/to/sync_dir
 ```
 
-The command receives summary information via stdin:
+The script gets summary info on stdin:
 ```
 AFL Overseer - New Crash Detected!
 
@@ -244,10 +149,21 @@ MESSAGE=$(cat)
 curl -X POST https://hooks.slack.com/... -d "{\"text\": \"$MESSAGE\"}"
 ```
 
-## Integration Examples
+## Remote monitoring
 
-### Systemd Service
+Run headless on your fuzzing server:
+```bash
+afl-overseer -w --headless -p 8080 /sync_dir
+```
 
+SSH tunnel from your laptop:
+```bash
+ssh -L 8080:localhost:8080 user@fuzzer-server
+```
+
+Then open http://localhost:8080 in your browser.
+
+Or set up a systemd service:
 ```ini
 [Unit]
 Description=AFL Overseer Web Dashboard
@@ -264,46 +180,84 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-### Remote Access
+## How it detects fuzzer status
 
-```bash
-# Start headless web server
-afl-overseer -w --headless -p 8080 /sync_dir
+- **Alive**: Process exists and responds to signals
+- **Dead**: Process PID not found or fuzzer_stats hasn't been updated recently
+- **Starting**: fuzzer_setup file newer than fuzzer_stats and recently modified
 
-# SSH tunnel from local machine
-ssh -L 8080:localhost:8080 user@remote-server
-
-# Access at http://localhost:8080
-```
+Warnings trigger when:
+- Fuzzer is dead
+- Timeout ratio ≥ 10%
+- Execution speed < 100 execs/sec
+- Cycles without finds > 10 (warning) or > 50 (critical)
+- Stability < 80%
+- Slowest execution > 100ms
 
 ## Performance
 
-Optimized for scanning large fuzzing campaigns:
-- **4 fuzzers**: ~7ms per scan
-- **20 fuzzers**: ~28ms per scan
-- **100 fuzzers**: ~111ms per scan
+Tested with mock fuzzing setups:
+- 4 fuzzers: ~7ms per scan
+- 20 fuzzers: ~28ms per scan
+- 100 fuzzers: ~111ms per scan
 
-Achieves ~600-900 fuzzers/sec throughput through:
-- Parallel processing with ThreadPoolExecutor
-- Non-blocking CPU monitoring
-- Efficient file parsing
-- Optimized process detection
+Roughly 600-900 fuzzers/sec throughput. Uses ThreadPoolExecutor for parallel processing and non-blocking CPU monitoring.
 
-See `testing/benchmark.py` for performance testing.
+See `testing/benchmark.py` if you want to run benchmarks.
+
+## Code structure
+
+```
+afl-overseer/
+├── afl-overseer            # Main executable
+├── src/
+│   ├── cli.py              # CLI argument parsing
+│   ├── tui.py              # Terminal UI (Textual)
+│   ├── webserver.py        # Web server (aiohttp)
+│   ├── models.py           # Data models
+│   ├── parser.py           # Parses fuzzer_stats and plot_data
+│   ├── process.py          # Process detection
+│   ├── monitor.py          # Main monitoring logic
+│   ├── utils.py            # Helper functions
+│   └── output_terminal.py  # Terminal output formatting
+└── testing/                # Test utilities
+```
+
+## Security notes
+
+The web server is read-only (no forms, no user input, only GET requests). It just reads fuzzer_stats files and serves JSON.
+
+That said, if you expose it to the internet:
+- Use a reverse proxy (nginx) with rate limiting and SSL
+- Or stick to SSH tunneling
+- Set up firewall rules
+- Keep dependencies updated
+
+See [SECURITY.md](SECURITY.md) for more details.
+
+## Differences from original afl-monitor
+
+The original afl-monitor (Python 2.7) had some security issues with pickle usage and deprecated modules. This rewrite:
+- Python 3.8+ with type hints
+- No pickle or command injection
+- Interactive TUI and web dashboard
+- AFL++ 4.x support (50+ fields)
+- Per-fuzzer resource monitoring
+- Parallel processing
+
+Thanks to Paul S. Ziegler for the original implementation.
 
 ## Troubleshooting
 
-### Permission Denied
-
-If you see warnings about process access:
+**"Permission denied" when checking processes:**
 ```bash
-# Add user to fuzzer's group
+# Add your user to the fuzzer's group
 sudo usermod -a -G fuzzer $USER
 ```
 
-### No Fuzzers Found
+**"No fuzzers found":**
 
-Check directory structure:
+Check your directory structure. Should look like:
 ```
 /sync_dir/
   ├── fuzzer01/
@@ -313,68 +267,22 @@ Check directory structure:
   └── ...
 ```
 
-Use: `afl-overseer /sync_dir` (not `/sync_dir/fuzzer01`)
-
-## Security
-
-AFL Overseer is designed with security as a primary consideration and is **safe to expose to the internet** with proper network controls.
-
-### Security Features
-
-- ✅ **Read-Only Design** - Zero user input, no forms, no file uploads
-- ✅ **GET Requests Only** - All HTTP endpoints are read-only
-- ✅ **No Attack Surface** - No POST/PUT/DELETE, no query parameters processed
-- ✅ **Static Content** - No XSS, CSRF, SQL injection, or command injection vectors
-- ✅ **Thread-Safe** - Proper locking mechanisms prevent race conditions
-- ✅ **Secure Dependencies** - Well-maintained, popular libraries only
-- ✅ **No Authentication Needed** - Stateless, read-only monitoring
-
-### Security Audits
-
-The codebase undergoes automated security scanning:
-- **Static Analysis**: pylint, flake8, mypy
-- **Security Scanning**: bandit (SAST), Trivy (vulnerability scanner)
-- **Dependency Checking**: safety, automated updates
-
-See [SECURITY.md](SECURITY.md) for detailed security information and best practices.
-
-### Recommended Deployment
-
-While designed to be secure, we recommend:
-1. **Network Controls**: Limit access via firewall/VPN
-2. **Reverse Proxy**: Use nginx with rate limiting and SSL
-3. **Monitoring**: Log access patterns
-4. **Updates**: Keep dependencies current
-
-## Project History
-
-AFL Overseer is a rewrite of the original [afl-monitor](https://github.com/reflare/afl-monitor) tool by Paul S. Ziegler. This version addresses security issues in the Python 2.7 codebase (unsafe pickle usage, deprecated modules) and adds support for AFL++ 4.x features, interactive TUI, and web dashboard capabilities.
-
-**Key differences from the original:**
-- Python 3.8+ with type hints (vs Python 2.7)
-- Interactive TUI and web dashboard (vs static output only)
-- Secure implementation without pickle or command injection
-- AFL++ 4.x field support with 50+ metrics
-- Real-time resource monitoring per fuzzer
-- Parallel processing for improved performance
-
-Thanks to Paul S. Ziegler for the original afl-monitor.
+Point afl-overseer at `/sync_dir`, not `/sync_dir/fuzzer01`.
 
 ## License
 
-Copyright (c) 2024 kirit1193. Licensed under the MIT License.
+MIT License - Copyright (c) 2024 kirit1193
 
-Original afl-monitor: Copyright (c) 2017 Paul S. Ziegler, Reflare Ltd. (Apache License 2.0)
+Original afl-monitor: Apache License 2.0 - Copyright (c) 2017 Paul S. Ziegler, Reflare Ltd.
 
 See [LICENSE](LICENSE) for details.
 
-## Acknowledgments
+## Credits
 
 - Original afl-monitor by Paul S. Ziegler
-- AFLplusplus project and afl-whatsup
 - AFL by Michal Zalewski
+- AFL++ project and afl-whatsup
 
-## Support
+## Contributing
 
-- Issues: [GitHub Issues](https://github.com/kirit1193/afl-overseer/issues)
-- Discussions: [GitHub Discussions](https://github.com/kirit1193/afl-overseer/discussions)
+Issues and pull requests welcome at [GitHub](https://github.com/kirit1193/afl-overseer).
